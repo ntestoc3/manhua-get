@@ -26,8 +26,8 @@
 (setv proxy {"http" "http://localhost:8080"
              "https" "http://localhost:8080"})
 
-(setv http-args {"verify" True
-                 "proxies" None
+(setv http-args {"verify" False
+                 "proxies" None #_proxy
                  "timeout" 30})
 
 (defn random-ua
@@ -80,7 +80,7 @@
           (. text)
           parse-info))
 
-(with-decorator (retry Exception :delay 5 :backoff 2 :max-delay 120)
+(with-decorator (retry Exception :delay 5 :backoff 4 :max-delay 120)
   (defn save-image
     [img-url out-path]
     (when (not (and (os.path.exists out-path)
@@ -107,7 +107,7 @@
           (.decode "utf-8")
           (.split "$qingtiandy$")))
 
-(with-decorator (retry Exception :delay 5 :backoff 2 :max-delay 120)
+(with-decorator (retry Exception :delay 5 :backoff 4 :max-delay 120)
   (defn get-manhua-images
     [chapter-url]
     (logging.info "get image for:%s" chapter-url)
