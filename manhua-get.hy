@@ -37,6 +37,15 @@
 
 (setv base-url "https://www.x18mh.com")
 
+(defn valid-jpg?
+  [img-path]
+  (and
+    (> (os.path.getsize img-path) 20)
+    (with [f (open img-path "rb")]
+      (f.seek -2 2)
+      (-> (f.read)
+          (.endswith b"\xff\xd9")))))
+
 (defn parse-chapters
   [data]
   (some-> data
@@ -71,21 +80,22 @@
           (. text)
           parse-info))
 
-(with-decorator (retry Exception :delay 2 :backoff 2 :max-delay 20)
- (defn save-image
-   [img-url out-path]
-   (when (not (os.path.exists out-path))
-     (setv headers {"user-agent" (random-ua)
-                    "Accept-Encoding" "gzip, deflate, br"
-                    "Accept" "image/webp,image/apng,image/*,*/*"})
-     (setv r (requests.get
-               img-url
-               :stream True
-               :headers headers #**http-args))
-     (when (= r.status_code 200)
-       (with [outf (open out-path "wb")]
-         (setv r.raw.decode-content True)
-         (shutil.copyfileobj r.raw outf))))))
+(with-decorator (retry Exception :delay 5 :backoff 2 :max-delay 120)
+  (defn save-image
+    [img-url out-path]
+    (when (not (and (os.path.exists out-path)
+                    (valid-jpg? out-path)))
+      (setv headers {"user-agent" (random-ua)
+                     "Accept-Encoding" "gzip, deflate, br"
+                     "Accept" "image/webp,image/apng,image/*,*/*"})
+      (setv r (requests.get
+                img-url
+                :stream True
+                :headers headers #**http-args))
+      (when (= r.status_code 200)
+        (with [outf (open out-path "wb")]
+          (setv r.raw.decode-content True)
+          (shutil.copyfileobj r.raw outf))))))
 
 (defn parse-image-urls
   [body]
@@ -95,15 +105,16 @@
           (.decode "utf-8")
           (.split "$qingtiandy$")))
 
-(defn get-manhua-images
-  [chapter-url]
-  (logging.info "get image for:%s" chapter-url)
-  (setv headers {"user-agent" (random-ua)})
-  (some-> (requests.get
-            f"{base-url}{chapter-url}"
-            :headers headers #**http-args)
-          (. text)
-          parse-image-urls))
+(with-decorator (retry Exception :delay 5 :backoff 2 :max-delay 120)
+  (defn get-manhua-images
+    [chapter-url]
+    (logging.info "get image for:%s" chapter-url)
+    (setv headers {"user-agent" (random-ua)})
+    (some-> (requests.get
+              f"{base-url}{chapter-url}"
+              :headers headers #**http-args)
+            (. text)
+            parse-image-urls)))
 
 (defn save-images
   [img-urls save-path]
