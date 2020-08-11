@@ -28,7 +28,7 @@
 
 (setv http-args {"verify" True
                  "proxies" None
-                 "timeout" 20})
+                 "timeout" 30})
 
 (defn random-ua
   []
@@ -95,7 +95,9 @@
       (when (= r.status_code 200)
         (with [outf (open out-path "wb")]
           (setv r.raw.decode-content True)
-          (shutil.copyfileobj r.raw outf))))))
+          (shutil.copyfileobj r.raw outf)))
+      (when (not (valid-jpg? out-path))
+        (raise (Exception "save no valid image"))))))
 
 (defn parse-image-urls
   [body]
