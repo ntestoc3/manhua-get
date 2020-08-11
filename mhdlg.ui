@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MHDlg</class>
+ <widget class="QDialog" name="MHDlg">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>738</width>
+    <height>575</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>漫画下载工具</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout_2">
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>输入漫画id:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="mid_editor"/>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QTableView" name="chs_table">
+       <property name="sortingEnabled">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QPushButton" name="get_chs_btn">
+       <property name="text">
+        <string>获取章节列表</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="download_btn">
+       <property name="text">
+        <string>下载选中章节</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exit_btn">
+       <property name="text">
+        <string>退出</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>mid_editor</tabstop>
+  <tabstop>chs_table</tabstop>
+  <tabstop>get_chs_btn</tabstop>
+  <tabstop>download_btn</tabstop>
+  <tabstop>exit_btn</tabstop>
+ </tabstops>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>exit_btn</sender>
+   <signal>clicked()</signal>
+   <receiver>MHDlg</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>690</x>
+     <y>439</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>696</x>
+     <y>551</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>get_chs_btn</sender>
+   <signal>clicked()</signal>
+   <receiver>MHDlg</receiver>
+   <slot>get_chapters()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>679</x>
+     <y>136</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>684</x>
+     <y>67</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>download_btn</sender>
+   <signal>clicked()</signal>
+   <receiver>MHDlg</receiver>
+   <slot>download_jpgs()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>670</x>
+     <y>286</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>686</x>
+     <y>212</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>download_jpgs()</slot>
+  <slot>get_chapters()</slot>
+ </slots>
+</ui>
