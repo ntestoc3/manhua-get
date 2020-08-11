@@ -23,9 +23,12 @@
         )
 
 (setv ua (UserAgent :use-cache-server True ))
-(setv proxy None #_{"http" "http://localhost:8080"
-                    "https" "http://localhost:8080"})
-(setv ssl-verify True)
+(setv proxy {"http" "http://localhost:8080"
+             "https" "http://localhost:8080"})
+
+(setv http-args {"verify" True
+                 "proxies" None
+                 "timeout" 20})
 
 (defn random-ua
   []
@@ -63,7 +66,7 @@
   (setv headers {"user-agent" (random-ua)})
   (some-> (requests.get
             f"{base-url}/manhua/{mid}/"
-            :headers headers :proxies proxy :verify ssl-verify)
+            :headers headers #**http-args)
           (doto (setattr "encoding" "gbk2312"))
           (. text)
           parse-info))
@@ -71,20 +74,18 @@
 (with-decorator (retry Exception :delay 2 :backoff 2 :max-delay 20)
  (defn save-image
    [img-url out-path]
-   (if (os.path.exists out-path)
-       (logging.warning "save-image %s already exists! skipping...." out-path)
-       (do (logging.info "save-image %s to %s." img-url out-path)
-           (setv headers {"user-agent" (random-ua)
-                          "Accept-Encoding" "gzip, deflate, br"
-                          "Accept" "image/webp,image/apng,image/*,*/*"})
-           (setv r (requests.get
-                     img-url
-                     :stream True
-                     :headers headers :proxies proxy :verify ssl-verify))
-           (when (= r.status_code 200)
-             (with [outf (open out-path "wb")]
-               (setv r.raw.decode-content True)
-               (shutil.copyfileobj r.raw outf)))))))
+   (when (not (os.path.exists out-path))
+     (setv headers {"user-agent" (random-ua)
+                    "Accept-Encoding" "gzip, deflate, br"
+                    "Accept" "image/webp,image/apng,image/*,*/*"})
+     (setv r (requests.get
+               img-url
+               :stream True
+               :headers headers #**http-args))
+     (when (= r.status_code 200)
+       (with [outf (open out-path "wb")]
+         (setv r.raw.decode-content True)
+         (shutil.copyfileobj r.raw outf))))))
 
 (defn parse-image-urls
   [body]
@@ -100,7 +101,7 @@
   (setv headers {"user-agent" (random-ua)})
   (some-> (requests.get
             f"{base-url}{chapter-url}"
-            :headers headers :proxies proxy :verify ssl-verify)
+            :headers headers #**http-args)
           (. text)
           parse-image-urls))
 
@@ -112,7 +113,8 @@
   (->2> (enumerate img-urls)
         (pmap #%(save-image (second %1)
                             (os.path.join save-path f"{(first %1) :03}.jpg"))
-              :proc 5)))
+              :proc 5))
+  (logging.info "save-images to %s over!" save-path))
 
 (defn save-manhua
   [mid ch-count &optional [start 0] [proc 5]]
