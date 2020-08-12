@@ -121,6 +121,16 @@
     (setv form self)
     )
 
+  (defn closeEvent [self event]
+    (logging.info "close event")
+    (event.accept)
+    (os._exit 0)
+    )
+
+  (defn reject [self]
+    (self.close)
+    None)
+
   (defn get-chapters [self]
     (setv mid (self.mid-editor.text))
     (if mid
@@ -247,17 +257,12 @@
     (setv infos (self.get-checked-chapters))
     (print  f"download-jpgs {(len infos)}")
     (logging.info f"download-jpgs {(len infos)}")
-    (-> (doto (Worker self.download-chapter (first infos))
-              (.signals.result.connect (partial self.download-result (first infos)))
-              (.signals.finished.connect (partial self.download-complete (first infos)))
-              (.signals.progress.connect (partial self.download-progress (first infos))))
-        (self.threadpool.start))
-    #_(map #%(-> (doto (Worker self.download-chapter %1)
-                       (.signals.result.connect (parital self.download-result %1))
-                       (.signals.finished.connect (parital self.download-complete %1))
-                       (.signals.progress.connect (parital self.download-progress %1)))
-                 (self.threadpool.start))
-           infos)
+    (for [info infos]
+      (-> (doto (Worker self.download-chapter info)
+                (.signals.result.connect (partial self.download-result info))
+                (.signals.finished.connect (partial self.download-complete info))
+                (.signals.progress.connect (partial self.download-progress info)))
+          (self.threadpool.start)))
     (logging.info "download-jpgs run over.")))
 
 (defmain [&rest args]
