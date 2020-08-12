@@ -77,42 +77,11 @@
     (-> (QtWidgets.QApplication.style)
         (.drawControl QtWidgets.QStyle.CE_ProgressBar opt painter))))
 
-(defclass CheckBoxHeader [QHeaderView]
-  (setv is-on False)
-
-  (defn __init__ [self orientation &optional [parent None]]
-    (QHeaderView.__init__ self orientation parent))
-
-  (defn paintSection [self painter rect index]
-    (painter.save)
-    (QHeaderView.paintSection self painter rect index)
-    (painter.restore)
-
-    (when (zero? index)
-      (setv option (QStyleOptionButton))
-      (set-attrs option
-                 rect (QRect 10 10 10 10)
-                 state (if self.is-on
-                           QStyle.State-On
-                           QStyle.State-Off))
-      (-> (self.style)
-          (.drawControl QStyle.CE-CheckBox
-                        option
-                        painter))))
-
-  (defn mousePressEvent [self event]
-    (setv self.is-on (not self.is-on))
-    (self.updateSection 0)
-    (QHeaderView.mousePressEvent self event)))
-
 (defclass MainDlg [QDialog Ui_MHDlg]
   (defn __init__ [self &optional [parent None]]
     (-> (super)
         (.__init__ parent))
     (self.setupUi self)
-
-    (-> (CheckBoxHeader Qt.Horizontal self)
-        (self.chs-table.setHorizontalHeader))
 
     (setv self.chs-model (QtGui.QStandardItemModel))
     (->> ["" "章节" "下载进度"]
@@ -127,6 +96,8 @@
     (self.chs-table.setColumnWidth 0 30)
     (self.chs-table.setColumnWidth 1 200)
 
+    (-> (self.chs-table.viewport)
+        (.installEventFilter self))
     (self.chs-table.installEventFilter self)
 
     (->> (CheckBoxDelegate self.chs-table)
@@ -151,19 +122,49 @@
                                ])
     )
 
+  (defn change-selection [self]
+    (for [idx (-> (self.chs-table.selectionModel)
+                  (.selectedRows)
+                  sorted)]
+      (setv old-check (-> (idx.row)
+                          (self.chs-model.index 0)
+                          (self.chs-model.data)))
+      (logging.info "old check of %s is %s" idx old-check)
+      (->> (if (= old-check "0")
+               "1"
+               "0")
+           (QtGui.QStandardItem)
+           (self.chs-model.setItem (idx.row) 0))))
+
   (defn eventFilter [self source event]
-    (if (and (= QtCore.QEvent.KeyPress (event.type))
-             (= QtCore.Qt.Key_Space (event.key)))
-        (do (print "space")
-            True)
-        (-> (super MainDlg self)
-            (.eventFilter source event))))
+    (cond [(or (and (= QtCore.QEvent.KeyPress (event.type))
+                    (= QtCore.Qt.Key_Space (event.key)))
+               (and (= QtCore.QEvent.MouseButtonPress (event.type))
+                    (= QtCore.Qt.RightButton (event.button))
+                    (is source (self.chs-table.viewport))))
+
+           (do (print "change selection.")
+               (self.change-selection)
+               True)]
+
+          [(and (= QtCore.QEvent.KeyPress (event.type))
+                (= QtCore.Qt.Key-Escape (event.key)))
+
+           (do (print "clear selection.")
+               (self.chs-table.clearSelection)
+               True)]
+
+          [True
+           (-> (super MainDlg self)
+               (.eventFilter source event))]))
 
   (defn get-manhua-info [self mid]
-    (setv self.infos (get-manhua-info mid))
-    (self.mahua-title.setText (of self.infos "title"))
-    (for [cht (of self.infos "chapters")]
-      (self.add-chapter-row (of cht "title"))))
+    (setv self.infos (-> (.strip mid)
+                         (get-manhua-info)))
+    (when self.infos
+      (self.mahua-title.setText (of self.infos "title"))
+      (for [cht (of self.infos "chapters")]
+        (self.add-chapter-row (of cht "title")))))
 
   (defn download-jpgs [self]
     (print "TODO download jpgs")
@@ -171,6 +172,11 @@
   )
 
 (defmain [&rest args]
+  (logging.basicConfig :level logging.INFO
+                       ;; :filename "app.log"
+                       ;; :filemode "w"
+                       :style "{"
+                       :format "{asctime} [{levelname}] {filename}({funcName})[{lineno}] {message}")
   (setv app (QtWidgets.QApplication sys.argv))
   (doto (MainDlg)
         (.show)

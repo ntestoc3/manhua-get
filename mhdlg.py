@@ -41,6 +41,8 @@ class Ui_MHDlg(object):
         self.chs_table = QtWidgets.QTableView(MHDlg)
         self.chs_table.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.chs_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.chs_table.setSelectionMode(QtWidgets.QAbstractItemView.MultiSelection)
+        self.chs_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.chs_table.setSortingEnabled(True)
         self.chs_table.setObjectName("chs_table")
         self.chs_table.horizontalHeader().setStretchLastSection(True)
