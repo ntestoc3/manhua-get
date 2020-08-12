@@ -80,6 +80,20 @@
        (except [e Exception]
          (logging.error "exception: %s" e)))))
 
+(defmacro set-attrs [obj &rest kwargs]
+  (when (!= 0
+            (% (len kwargs) 2))
+    (raise (Exception "set-attrs kwargs must multiple of 2")))
+  (setv set-steps (->> (partition kwargs 2)
+                       list
+                       (map (fn [arg]
+                              (setv obj-att (HySymbol f"{obj}.{(first arg)}"))
+                              `(setv ~obj-att
+                                     ~(second arg))))
+                       list))
+  `(do
+     ~@set-steps))
+
 (require [hy.extra.anaphoric [*]])
 
 (defn select-keys
