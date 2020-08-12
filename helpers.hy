@@ -107,15 +107,28 @@
         [multiprocessing [Pool :as ProcPool]])
 
 (defn pmap
-  [f datas &optional [proc 5] [use-proc False]]
+  [f datas &optional [proc 5] [use-proc False] [use-async False]]
   ":proc 为进程或线程数量
    :use-proc 是否使用进程池，默认为False，使用线程池
      注意，使用进程池的话，f不能使用匿名函数"
   (with [pool (if use-proc
                   (ProcPool :processes proc)
                   (ThreadPool :processes proc))]
-    (pool.map f datas)))
+    (if use-async
+        (pool.map-async f datas)
+        (pool.map f datas))))
 
+(defn imap
+  [f datas &optional [proc 5] [use-proc False] [unordered False]]
+  ":proc 为进程或线程数量
+   :use-proc 是否使用进程池，默认为False，使用线程池
+     注意，使用进程池的话，f不能使用匿名函数"
+  (with [pool (if use-proc
+                  (ProcPool :processes proc)
+                  (ThreadPool :processes proc))]
+    (if unordered
+        (pool.imap-unordered f datas)
+        (pool.imap f datas))))
 
 (defn with-retry-limit
   [f &optional

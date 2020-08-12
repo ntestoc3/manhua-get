@@ -2,11 +2,13 @@
 
 (require [hy.extra.anaphoric [*]]
          [helpers [*]]
+         [hy.contrib.walk [let]]
          )
 
 (import threading
         logging
         sys
+        os
 
         [PyQt5.QtWidgets [QDialog
                           QApplication
@@ -17,11 +19,17 @@
                           QStyleOptionButton
                           QStyle
                           ]]
-        [PyQt5.QtCore [QRect Qt]]
+        [PyQt5.QtCore [QRect Qt QThreadPool]]
         [PyQt5 [QtWidgets QtGui QtCore]]
 
         [manhua-get [get-manhua-info
+                     get-manhua-images
+                     save-image
                      ]]
+        [functools [partial]]
+        [retry [retry]]
+        [helpers [*]]
+        [worker [Worker]]
         [mhdlg [Ui_MHDlg]])
 
 (defclass CheckBoxDelegate [QtWidgets.QItemDelegate]
@@ -72,7 +80,7 @@
                minimum 0
                maximum 100
                progress progress
-               text f"{progress}%"
+               text f"{progress :.1f}%"
                textVisible True)
     (-> (QtWidgets.QApplication.style)
         (.drawControl QtWidgets.QStyle.CE_ProgressBar opt painter))))
@@ -104,6 +112,13 @@
          (self.chs-table.setItemDelegateForColumn 0))
     (->> (ProgressDelegate self.chs-table)
          (self.chs-table.setItemDelegateForColumn 2))
+
+    (setv self.threadpool (QThreadPool))
+
+    (self.chs-table.setColumnHidden 3 True)
+
+    (global form)
+    (setv form self)
     )
 
   (defn get-chapters [self]
@@ -114,11 +129,12 @@
                                  "提示" "漫画id不能为空"
                                  QMessageBox.Ok QMessageBox.Ok)))
 
-  (defn add-chapter-row [self title]
+  (defn add-chapter-row [self title url]
     (self.chs-model.appendRow [(QtGui.QStandardItem "0")
                                (QtGui.QStandardItem title)
                                (doto (QtGui.QStandardItem)
                                      (.setData 0 PROGRESS-ROLE))
+                               (QtGui.QStandardItem url)
                                ])
     )
 
@@ -126,15 +142,12 @@
     (for [idx (-> (self.chs-table.selectionModel)
                   (.selectedRows)
                   sorted)]
-      (setv old-check (-> (idx.row)
-                          (self.chs-model.index 0)
-                          (self.chs-model.data)))
-      (logging.info "old check of %s is %s" idx old-check)
-      (->> (if (= old-check "0")
-               "1"
-               "0")
-           (QtGui.QStandardItem)
-           (self.chs-model.setItem (idx.row) 0))))
+      (setv item (self.chs-model.item (idx.row) 0))
+      (logging.warning f"item text:{(item.text)} data:{(item.data)}" )
+      (-> (if (= (item.text) "0")
+              "1"
+              "0")
+          (item.setData Qt.DisplayRole))))
 
   (defn eventFilter [self source event]
     (cond [(or (and (= QtCore.QEvent.KeyPress (event.type))
@@ -164,12 +177,88 @@
     (when self.infos
       (self.mahua-title.setText (of self.infos "title"))
       (for [cht (of self.infos "chapters")]
-        (self.add-chapter-row (of cht "title")))))
+        (self.add-chapter-row (of cht "title")
+                              (of cht "url")))
+
+      (self.chs-table.setColumnHidden 3 True)
+      ))
+
+  (defn read-row-items [self row]
+    (->> (map #%(self.chs-model.item row %1) [0 1 2 3])
+         (zip ["checked" "title" "progress" "url"])
+         (dict)))
+
+  (with-decorator (retry Exception :delay 5 :backoff 4 :max-delay 120)
+    (defn download-chapter [self info progress-callback]
+      (when (not info)
+        (return None))
+
+      (logging.info "download chapter worker")
+      (setv url (.text (of info "url")))
+      (setv title (.text (of info "title")))
+
+      (logging.info f" start download chapter {title}")
+
+      (setv img-urls (get-manhua-images url))
+      (setv target-path (os.path.join "manga"
+                                      (self.mahua-title.text)
+                                      title))
+      (when (not (os.path.exists target-path))
+        (os.makedirs target-path))
+
+      (logging.info "save-image [%d] to: %s." (len img-urls) target-path)
+
+      (for [i (range (len img-urls))]
+        (save-image (of img-urls i)
+                    (os.path.join target-path f"{i :03}.jpg"))
+        (progress-callback.emit (/ (* i 100)
+                                   (len img-urls))))
+      (logging.info "save-images to %s over!" target-path)
+      (len img-urls)))
+
+  (defn download-result [self info o]
+    (setv title (.text (of info "title")))
+    (logging.info f"{title} download result: {o}"))
+
+  (defn download-complete [self info]
+    (setv title (.text (of info "title")))
+    (logging.info f"{title} download complete")
+    (-> (of info "progress")
+        (.setData 100 PROGRESS-ROLE)))
+
+  (defn download-progress [self info n]
+    (setv title (.text (of info "title")))
+    (logging.info f"{title} progress {n}")
+    (-> (of info "progress")
+        (.setData n PROGRESS-ROLE)))
+
+  (defn get-checked-chapters [self]
+    (->> (self.chs-model.rowCount)
+         range
+         (map #%(doto (self.read-row-items %1)
+                      (-> (of "row")
+                          (setv %1))))
+         (filter #%(= (.text (of %1 "checked"))
+                      "1"))
+         list))
 
   (defn download-jpgs [self]
-    (print "TODO download jpgs")
-    )
-  )
+    (self.threadpool.setMaxThreadCount 5)
+    (setv infos (self.get-checked-chapters))
+    (print  f"download-jpgs {(len infos)}")
+    (logging.info f"download-jpgs {(len infos)}")
+    (-> (doto (Worker self.download-chapter (first infos))
+              (.signals.result.connect (partial self.download-result (first infos)))
+              (.signals.finished.connect (partial self.download-complete (first infos)))
+              (.signals.progress.connect (partial self.download-progress (first infos))))
+        (self.threadpool.start))
+    #_(map #%(-> (doto (Worker self.download-chapter %1)
+                       (.signals.result.connect (parital self.download-result %1))
+                       (.signals.finished.connect (parital self.download-complete %1))
+                       (.signals.progress.connect (parital self.download-progress %1)))
+                 (self.threadpool.start))
+           infos)
+    (logging.info "download-jpgs run over.")))
 
 (defmain [&rest args]
   (logging.basicConfig :level logging.INFO
