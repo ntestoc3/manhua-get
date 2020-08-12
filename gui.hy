@@ -115,6 +115,9 @@
 
     (setv self.threadpool (QThreadPool))
 
+    (-> (self.threadpool.maxThreadCount)
+        (self.thread-spin.setValue))
+
     (self.chs-table.setColumnHidden 3 True)
 
     (global form)
@@ -252,8 +255,12 @@
                       "1"))
          list))
 
-  (defn download-jpgs [self]
+  (defn change-max-thread [self n]
+    (logging.info f"change thread pool count to {n}.")
     (self.threadpool.setMaxThreadCount 5)
+    )
+
+  (defn download-jpgs [self]
     (setv infos (self.get-checked-chapters))
     (print  f"download-jpgs {(len infos)}")
     (logging.info f"download-jpgs {(len infos)}")
