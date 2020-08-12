@@ -21,6 +21,10 @@ class Ui_MHDlg(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
+        self.label_3 = QtWidgets.QLabel(MHDlg)
+        self.label_3.setOpenExternalLinks(True)
+        self.label_3.setObjectName("label_3")
+        self.horizontalLayout.addWidget(self.label_3)
         self.label = QtWidgets.QLabel(MHDlg)
         self.label.setObjectName("label")
         self.horizontalLayout.addWidget(self.label)
@@ -83,6 +87,7 @@ class Ui_MHDlg(object):
     def retranslateUi(self, MHDlg):
         _translate = QtCore.QCoreApplication.translate
         MHDlg.setWindowTitle(_translate("MHDlg", "漫画下载工具"))
+        self.label_3.setText(_translate("MHDlg", "<html><head/><body><pre style=\" margin-top:0px; margin-bottom:15px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><a href=\"https://www.x18mh.com/\"><span style=\" text-decoration: underline; color:#0057ae;\">网站</span></a></pre></body></html>"))
         self.label.setText(_translate("MHDlg", "输入漫画id:"))
         self.label_2.setText(_translate("MHDlg", "并发数量："))
         self.get_chs_btn.setText(_translate("MHDlg", "获取章节列表"))
