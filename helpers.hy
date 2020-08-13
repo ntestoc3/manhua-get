@@ -4,7 +4,9 @@
   (setv ret head)
   (for [node args]
     (setv ret (if (isinstance node HyExpression)
-                  `(~(first node) ~(second node) ~ret ~@(drop 2 node))
+                  (if (> (len node) 1)
+                      `(~(first node) ~(second node) ~ret ~@(drop 2 node))
+                      `(~(first node) ~ret ~@(rest node)))
                   `(~node ~ret))))
   ret)
 
