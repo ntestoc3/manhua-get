@@ -257,7 +257,7 @@
 
   (defn change-max-thread [self n]
     (logging.info f"change thread pool count to {n}.")
-    (self.threadpool.setMaxThreadCount 5)
+    (self.threadpool.setMaxThreadCount n)
     )
 
   (defn download-jpgs [self]
