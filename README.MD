@@ -22,8 +22,9 @@ pip install -r requirements-cli.txt
    
    如果使用cli接口，命令行执行
    ```sh 
-   hy manhua_get.hy [参数]
+   hy manhua_get.hy mid
    ```
+   先下载章节列表，然后修改章节列表文件，删掉不想下载的章节，再启动命令行下载章节列表文件中指定的章节。
 
 # 程序截图
 　![程序界面](./resources/screen.jpg)

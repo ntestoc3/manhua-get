@@ -69,15 +69,20 @@
   {"title" (parse-title data)
    "chapters" (parse-chapters data)})
 
-(setv pbar (tqdm :total 0))
+(setv pbar None)
 (defn update-progress-total
   [n]
-  (+= pbar.total n)
-  (pbar.refresh))
+  (global pbar)
+  (print "pbar:" pbar)
+  (when pbar
+    (+= pbar.total n)
+    (pbar.refresh)))
 
 (defn update-progress
   [&optional [n 1]]
-  (pbar.update n))
+  (global pbar)
+  (when pbar
+    (pbar.update n)))
 
 (with-decorator (retry Exception :delay 5 :backoff 4 :max-delay 120)
   (defn get-manhua-info
@@ -157,6 +162,8 @@
 (defn save-manhua
   [mid chapters &optional [proc 5]]
   (setv info (get-manhua-info mid))
+  (global pbar)
+  (setv pbar (tqdm :total 1))
   (->2> (of info "chapters")
         (filter (fn [ch]
                   (-> (of ch "title")
@@ -165,7 +172,8 @@
                     (save-images (os.path.join "manga"
                                                (of info "title")
                                                (of %1 "title"))))
-              :proc proc)))
+              :proc proc))
+  (update-progress))
 
 (defn save-chapters
   [mid outf]
