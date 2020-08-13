@@ -92,14 +92,24 @@
             (. text)
             parse-info)))
 
+(defn valid-download?
+  [out-path real-size]
+  (-> (os.stat out-path)
+      (. st-size)
+      (= (int real-size))))
+
 (with-decorator (retry Exception :delay 5 :backoff 4 :max-delay 120)
   (defn save-image
     [img-url out-path]
+    (setv headers {"user-agent" (random-ua)
+                   "Accept-Encoding" "gzip, deflate, br"
+                   "Accept" "image/webp,image/apng,image/*,*/*"})
     (when (not (and (os.path.exists out-path)
-                    (valid-jpg? out-path)))
-      (setv headers {"user-agent" (random-ua)
-                     "Accept-Encoding" "gzip, deflate, br"
-                     "Accept" "image/webp,image/apng,image/*,*/*"})
+                    (or (valid-jpg? out-path)
+                        (valid-download? out-path
+                                         (-> (requests.head img-url)
+                                             (. headers)
+                                             (of "Content-Length"))))))
       (setv r (requests.get
                 img-url
                 :stream True
@@ -108,8 +118,9 @@
         (with [outf (open out-path "wb")]
           (setv r.raw.decode-content True)
           (shutil.copyfileobj r.raw outf)))
-      (when (not (valid-jpg? out-path))
-        (raise (Exception f"save no valid image: {out-path}"))))))
+      (when (not (valid-download? out-path
+                                  (of r.headers "Content-Length")))
+        (raise (Exception f"save no valid image url:{img-url} path:{out-path}"))))))
 
 (defn parse-image-urls
   [body]
