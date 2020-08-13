@@ -2,7 +2,7 @@
 # 简介
 　　漫画下载工具，支持多线程
 
-# 安装方法
+# 安装
 　　下载整个项目，然后
 ```sh 
 pip install -r requirements.txt
@@ -13,6 +13,7 @@ pip install -r requirements.txt
 pip install -r requirements-cli.txt
 ```
 
+# 执行
    安装完依赖之后，命令行执行
    ```sh 
    hy gui.hy
@@ -23,3 +24,16 @@ pip install -r requirements-cli.txt
    ```sh 
    hy manhua_get.hy [参数]
    ```
+
+# 程序截图
+　![程序界面](./resources/screen.jpg)
+　支持设置线程数量，选择章节，下载进度显示。
+
+
+# 关于
+　 本程序仅用于学习交流，严禁用于商业用途或非法目的。
+
+   Copyright (c) ntestoc3
+
+   
+   Licensing: GPL v3
